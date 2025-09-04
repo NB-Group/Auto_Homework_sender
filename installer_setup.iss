@@ -39,9 +39,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop icon"
 
 [Files]
-Source: "F:\Code\Python\Auto_Homework\dist\main.dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "F:\Code\Python\Auto_Homework\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "F:\Code\Python\Auto_Homework\README.md"; DestDir: "{app}"; Flags: ignoreversion; DestName: "README.txt"
+Source: "dist\main.dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion; DestName: "README.txt"
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"

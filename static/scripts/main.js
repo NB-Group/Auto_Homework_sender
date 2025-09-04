@@ -164,6 +164,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // 再次兜底绑定一次按钮（防止DOM晚渲染或被替换）
         try { bindMainButton(); } catch (e) { console.log('兜底按钮绑定失败', e); }
     }, 1000);
+
+    // 绑定检查更新按钮
+    const upd = document.getElementById('check-update-btn');
+    if (upd && !upd.__bound){
+        upd.__bound = true;
+        upd.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); checkUpdateManually(); });
+    }
 });
 
 // 监听 pywebview 原生 ready 事件，进一步增强兼容性
@@ -1044,8 +1051,12 @@ async function checkUpdateManually(){
         const latest = (j.latest || '0.0.0').replace(/^v/i,'');
         const cur = (window.__APP_VERSION__ || '0.0.0').replace(/^v/i,'');
         if(latest !== cur){
+            // 弹窗提示并提供镜像
+            const url = j.download || '';
+            const mirrors = Array.isArray(j.mirrors)? j.mirrors : [];
+            const first = mirrors[0] || url;
             showSuccess(`发现新版本 ${latest}`);
-            if(j.download){ setTimeout(()=>{ try{ window.open(j.download, '_blank'); }catch(_){} }, 500); }
+            setTimeout(()=>{ try{ window.open(first || url, '_blank'); }catch(_){} }, 600);
         }else{
             showSuccess('当前已是最新版本');
         }
@@ -1053,6 +1064,9 @@ async function checkUpdateManually(){
         showError('更新检查失败: '+e.message);
     }
 }
+
+// 开机自动检查一次（延迟几秒）
+setTimeout(()=>{ try{ checkUpdateManually(); }catch(_){ } }, 3000);
 
 // 主题相关函数
 let currentTheme = 'dark';

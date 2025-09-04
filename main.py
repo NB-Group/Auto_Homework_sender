@@ -25,12 +25,15 @@ except ImportError:
 
 def _resolve_index_html_path() -> str:
     """获取前端入口文件绝对路径，兼容打包与开发环境。"""
-    # 优先使用打包运行目录
-    base_dir = getattr(sys, "_MEIPASS", None)
-    if base_dir:
-        index_path = os.path.join(base_dir, "static", "index.html")
-        if os.path.exists(index_path):
-            return index_path
+    # 优先：打包后的可执行文件所在目录（Nuitka / PyInstaller 均可用）
+    try:
+        if getattr(sys, 'frozen', False) or hasattr(sys, "_MEIPASS"):
+            exe_dir = os.path.dirname(sys.executable)
+            index_path = os.path.join(exe_dir, "static", "index.html")
+            if os.path.exists(index_path):
+                return index_path
+    except Exception:
+        pass
 
     # 退回到源码所在目录
     script_dir = os.path.abspath(os.path.dirname(__file__))

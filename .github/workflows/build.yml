@@ -60,8 +60,9 @@ jobs:
           }
 
       - name: Make installer
+        shell: pwsh
         run: |
-          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_setup.iss
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer_setup.iss"
 
       - name: Zip portable
         shell: pwsh

@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: windows-latest
@@ -90,6 +93,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           files: |
             installer/*.exe
             AutoHomework-portable.zip

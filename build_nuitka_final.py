@@ -8,6 +8,13 @@ import subprocess
 import sys
 import os
 
+# Ensure UTF-8 console output on Windows CI
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 def build_with_nuitka():
     """使用Nuitka构建可执行文件 - 正式版本"""
     
@@ -40,24 +47,20 @@ def build_with_nuitka():
         "main.py"
     ]
     
-    print("开始使用Nuitka构建正式版本...")
-    print("命令:", " ".join(nuitka_cmd))
+    print("Start building with Nuitka (release mode)...")
+    print("Command:", " ".join(nuitka_cmd))
     
     try:
         result = subprocess.run(nuitka_cmd, check=True, capture_output=True, text=True)
-        print("构建成功!")
-        print("输出目录: dist/main.dist/")
-        print("可执行文件: dist/main.dist/AutoHomework.exe")
-        print("\n正式版本已创建，无控制台窗口")
+        print("Build success!")
+        print("Output dir: dist/main.dist/")
+        print("Executable: dist/main.dist/AutoHomework.exe")
+        print("\nRelease build created (console disabled)")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"构建失败: {e}")
-        print("错误输出:", e.stderr)
+        print(f"Build failed: {e}")
+        print("stderr:", e.stderr)
         return False
 
-if __name__ == "__main__":
-    if not os.path.exists("main.py"):
-        print("错误: 未找到 main.py 文件")
-        sys.exit(1)
-    
+if __name__ == "__main__":    
     build_with_nuitka()

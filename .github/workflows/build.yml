@@ -33,6 +33,11 @@ jobs:
             Copy-Item -Recurse -Force 'dist_nuitka/main.dist/*' 'dist/main.dist/'
             if (Test-Path 'dist/main.dist/main.exe') { Rename-Item 'dist/main.dist/main.exe' 'AutoHomework.exe' }
           }
+          elseif (Test-Path 'dist_nuitka/main.dist2') {
+            New-Item -ItemType Directory -Force -Path 'dist/main.dist' | Out-Null
+            Copy-Item -Recurse -Force 'dist_nuitka/main.dist2/*' 'dist/main.dist/'
+            if (Test-Path 'dist/main.dist/main.exe') { Rename-Item 'dist/main.dist/main.exe' 'AutoHomework.exe' }
+          }
 
       - name: Build with Nuitka (fallback)
         shell: pwsh

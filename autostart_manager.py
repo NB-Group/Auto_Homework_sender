@@ -32,10 +32,10 @@ class AutostartManager:
     def _get_executable_paths(self):
         """获取可执行文件路径"""
         try:
-            # 如果是打包后的exe
-            if hasattr(sys, '_MEIPASS'):
+            # 打包后的 exe：直接使用当前可执行文件路径，避免名称硬编码
+            if getattr(sys, 'frozen', False) or hasattr(sys, '_MEIPASS'):
                 exe_dir = os.path.dirname(sys.executable)
-                self.exe_path = os.path.join(exe_dir, "main.exe")
+                self.exe_path = sys.executable  # 实际发布名称（如 AutoHomework.exe）
                 self.service_path = os.path.join(exe_dir, "service_mode.exe")
             else:
                 # 开发环境 - 使用pythonw.exe避免显示CMD窗口

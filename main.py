@@ -10,7 +10,7 @@ import webview
 import traceback
 import json
 
-from homework_api import HomeworkAPI
+from homework_api import HomeworkAPI, get_app_data_path
 from autostart_manager import AutostartManager
 from flask import Flask, request as flask_request, jsonify, make_response
 
@@ -1080,6 +1080,20 @@ def main():
     import sys
     import threading
     import atexit
+
+    # 提前建立日志输出（发布版无控制台时也能排查）
+    try:
+        log_dir = get_app_data_path()
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, 'auto_homework.log')
+        log_file = open(log_path, 'a', encoding='utf-8')
+        sys.stdout = log_file
+        sys.stderr = log_file
+        print("[Log] 日志已重定向:", log_path)
+        print("[Env] exe:", sys.executable)
+        print("[Env] cwd:", os.getcwd())
+    except Exception:
+        pass
 
     # 创建退出事件
     exit_event = threading.Event()

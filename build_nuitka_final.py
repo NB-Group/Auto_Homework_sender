@@ -21,31 +21,39 @@ def build_with_nuitka():
     # Nuitka命令参数 - 禁用控制台的正式版本
     nuitka_cmd = [
         sys.executable, "-m", "nuitka",
-        "--standalone",  # standalone模式
-        "--windows-console-mode=disable",  # 禁用控制台窗口
-        "--windows-icon-from-ico=icon.ico",  # 添加图标
-        "--include-data-dir=static=static",  # 包含static目录
-        "--output-dir=dist",  # 输出目录
-        "--output-filename=AutoHomework.exe",  # 输出文件名
-        "--assume-yes-for-downloads",  # 自动下载依赖
-        "--plugin-enable=tk-inter",  # 启用tkinter插件
-        "--include-module=webview.platforms.edgechromium",  # 指定webview平台
+        "--standalone",
+        "--windows-console-mode=disable",
+        "--windows-icon-from-ico=icon.ico",
+        "--output-dir=dist",
+        "--output-filename=AutoHomework.exe",
+        "--assume-yes-for-downloads",
+        "--plugin-enable=tk-inter",
+        "--include-module=webview.platforms.edgechromium",
         "--include-module=schedule",
         "--include-module=requests",
         "--include-module=pptx",
         "--include-module=json",
         "--include-module=threading",
         "--include-module=pathlib",
-        "--include-module=winreg",  # 用于开机启动管理
+        "--include-module=winreg",
         "--include-module=logging",
         "--include-module=argparse",
-        "--include-data-file=service_mode.py=service_mode.py",  # 包含服务模式文件
-        "--include-data-file=autostart_manager.py=autostart_manager.py",  # 包含开机启动管理文件
-        "--include-data-file=setup_autostart.py=setup_autostart.py",  # 包含设置脚本
-        "--include-data-file=setup_autostart.bat=setup_autostart.bat",  # 包含批处理文件
-        "--include-data-file=AUTOSTART_README.md=AUTOSTART_README.md",  # 包含说明文档
-        "main.py"
     ]
+
+    # 条件包含静态资源与脚本文件，避免CI缺失文件导致失败
+    if os.path.isdir("static"):
+        nuitka_cmd += ["--include-data-dir=static=static"]
+    for f in [
+        "service_mode.py",
+        "autostart_manager.py",
+        "setup_autostart.py",
+        "setup_autostart.bat",
+        "AUTOSTART_README.md",
+    ]:
+        if os.path.exists(f):
+            nuitka_cmd += [f"--include-data-file={f}={f}"]
+
+    nuitka_cmd += ["main.py"]
     
     print("Start building with Nuitka (release mode)...")
     print("Command:", " ".join(nuitka_cmd))

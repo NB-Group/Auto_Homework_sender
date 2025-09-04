@@ -1,0 +1,423 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* 颜色变量 */
+  --color-bg1: rgb(108, 0, 162);
+  --color-bg2: rgb(0, 17, 82);
+  --color1: 18, 113, 255;
+  --color2: 221, 74, 255;
+  --color3: 100, 220, 255;
+  --color4: 200, 50, 50;
+  --color5: 180, 180, 50;
+  --color-interactive: 140, 100, 255;
+  
+  /* 玻璃效果变量 */
+  --glass-bg-opacity: 0.15; /* 可被运行时覆盖 */
+  --glass-bg: rgba(255, 255, 255, var(--glass-bg-opacity));
+  --glass-blur: 20px; /* 可被运行时覆盖 */
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-highlight: rgba(255, 255, 255, 0.4);
+  --glass-shadow: rgba(0, 0, 0, 0.1);
+  
+  /* 文本颜色 */
+  --text-primary: white;
+  --text-secondary: rgba(255, 255, 255, 0.9);
+  --text-tertiary: rgba(255, 255, 255, 0.7);
+  
+  /* 动画变量 */
+  --circle-size: 80%;
+  --blending: hard-light;
+  
+  /* 字体变量 */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* 浅色模式变量 */
+[data-theme="light"] {
+  --color-bg1: rgb(240, 240, 255);
+  --color-bg2: rgb(255, 255, 255);
+  --color1: 59, 130, 246;
+  --color2: 147, 51, 234;
+  --color3: 34, 197, 94;
+  --color4: 239, 68, 68;
+  --color5: 245, 158, 11;
+  --color-interactive: 99, 102, 241;
+  
+  /* 让玻璃背景在浅色模式下也跟随全局透明度变量 */
+  --glass-bg: rgba(255, 255, 255, var(--glass-bg-opacity));
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-shadow: rgba(0, 0, 0, 0.05);
+  
+  --text-primary: #1f2937;
+  --text-secondary: #374151;
+  --text-tertiary: #6b7280;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: var(--font-primary);
+  height: 100vh;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text-primary);
+  user-select: none;
+}
+
+/* 标题栏样式 */
+.title-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  z-index: 1000;
+}
+
+[data-theme="light"] .title-bar {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.title-bar-drag {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.title-bar-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: left;
+  margin-left: 15px;
+}
+
+.title-bar-actions {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 明确指定拖拽区域与非拖拽区域，防止覆盖控制按钮 */
+.pywebview-drag-region,
+.title-bar-drag {
+  -webkit-app-region: drag; /* 指定为可拖拽区域 */
+  flex: 1;
+  min-width: 0; /* 防止在 flex 布局下溢出覆盖其他元素 */
+  z-index: 1000;
+}
+
+.title-bar-actions,
+.title-bar-actions *,
+.settings-btn,
+.title-bar-button {
+  -webkit-app-region: no-drag; /* 控制按钮明确设置为不可拖拽 */
+  pointer-events: auto; /* 确保能接收点击事件 */
+  position: relative;
+  z-index: 1010; /* 保证在拖拽层之上，接收事件 */
+}
+
+.settings-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: rotate(90deg);
+}
+
+[data-theme="light"] .settings-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.title-bar-buttons {
+  display: flex;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.title-bar-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.title-bar-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .title-bar-button:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.title-bar-button.close:hover {
+  background: #e81123;
+  color: white;
+}
+
+.title-bar-button.minimize:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .title-bar-button.minimize:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.title-bar-button svg {
+  color: var(--text-primary);
+}
+
+.title-bar-button.close:hover svg {
+  color: white;
+}
+
+/* 动态背景 */
+.gradient-bg {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  /* 静态纯色背景，移除复杂渐变动画与滤镜，减少GPU压力 */
+  background: #0b1220; /* 深色背景占位，稍后可替换为静态图 */
+  overflow: hidden;
+  z-index: -1;
+  -webkit-app-region: no-drag;
+}
+
+[data-theme="light"] .gradient-bg {
+  background: linear-gradient(40deg, var(--color-bg1), var(--color-bg2));
+}
+
+.gradient-bg svg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+
+.gradients-container {
+  /* 关闭goo滤镜与模糊，避免显卡负担 */
+  filter: none;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+}
+
+.g1, .g2, .g3, .g4, .g5 {
+  display: none; /* 隐藏所有动态渐变圆 */
+}
+
+.g1 {
+  background: radial-gradient(circle at center, rgba(var(--color1), 0.8) 0, rgba(var(--color1), 0) 50%) no-repeat;
+  top: calc(50% - var(--circle-size) / 2);
+  left: calc(50% - var(--circle-size) / 2);
+  transform-origin: center center;
+  animation: moveVertical 30s ease infinite;
+}
+
+.g2 {
+  background: radial-gradient(circle at center, rgba(var(--color2), 0.8) 0, rgba(var(--color2), 0) 50%) no-repeat;
+  top: calc(50% - var(--circle-size) / 2);
+  left: calc(50% - var(--circle-size) / 2);
+  transform-origin: calc(50% - 400px);
+  animation: moveInCircle 20s reverse infinite;
+}
+
+.g3 {
+  background: radial-gradient(circle at center, rgba(var(--color3), 0.8) 0, rgba(var(--color3), 0) 50%) no-repeat;
+  top: calc(50% - var(--circle-size) / 2 + 200px);
+  left: calc(50% - var(--circle-size) / 2 - 500px);
+  transform-origin: calc(50% + 400px);
+  animation: moveInCircle 40s linear infinite;
+}
+
+.g4 {
+  background: radial-gradient(circle at center, rgba(var(--color4), 0.8) 0, rgba(var(--color4), 0) 50%) no-repeat;
+  top: calc(50% - var(--circle-size) / 2);
+  left: calc(50% - var(--circle-size) / 2);
+  transform-origin: calc(50% - 200px);
+  animation: moveHorizontal 40s ease infinite;
+}
+
+.g5 {
+  background: radial-gradient(circle at center, rgba(var(--color5), 0.8) 0, rgba(var(--color5), 0) 50%) no-repeat;
+  width: calc(var(--circle-size) * 2);
+  height: calc(var(--circle-size) * 2);
+  top: calc(50% - var(--circle-size));
+  left: calc(50% - var(--circle-size));
+  transform-origin: calc(50% - 800px) calc(50% + 200px);
+  animation: moveInCircle 20s ease infinite;
+}
+
+.interactive { display: none; }
+
+/* 页面布局 */
+.page {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none; /* 默认完全隐藏，不占据事件层 */
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(50px);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+}
+
+.page.active {
+  display: flex; /* 激活时显示 */
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+}
+
+/* 页面动画状态 */
+.page.animating {
+  display: flex; /* 动画期间也显示 */
+}
+
+/* 主页面样式 */
+.main-container {
+  text-align: center;
+  z-index: 10;
+  -webkit-app-region: no-drag;
+}
+
+.app-title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 3rem;
+  background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+  letter-spacing: -0.02em;
+}
+
+[data-theme="light"] .app-title {
+  background: linear-gradient(135deg, #1f2937, #374151);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+}
+
+.main-send-btn {
+  min-width: 400px;
+  cursor: pointer;
+  margin: 0 auto 2rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.main-send-btn:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.send-btn-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+}
+
+.send-icon {
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-theme="light"] .send-icon {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.send-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
+}
+
+.status-section {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.status-indicator {
+  margin-top: 0;
+  padding: 0.8rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 25px;
+  backdrop-filter: blur(10px);
+  display: inline-block;
+}
+
+[data-theme="light"] .status-indicator {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+#status-text {
+  font-size: 0.95rem;
+  opacity: 0.9;
+  color: var(--text-tertiary);
+}
+
+.scheduler-status {
+  margin-top: 0;
+  padding: 0.8rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 25px;
+  backdrop-filter: blur(10px);
+  display: inline-block;
+}
+
+[data-theme="light"] .scheduler-status {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+#scheduler-info {
+  font-size: 0.95rem;
+  opacity: 0.9;
+  color: var(--text-tertiary);
+}

@@ -1,0 +1,13 @@
+{
+  "access_token": "731e2e7766723703fb8bcd39e70e56baa805756ce0cab34b5a91e600fcb8dfb1",
+  "auto_send_time": "17:00",
+  "auto_send_enabled": true,
+  "ppt_file_path": "G:/Download/测试.pptx",
+  "theme": "dark",
+  "glass_blur": 20,
+  "auto_start_ui": true,
+  "auto_start_service": false,
+  "weekday_send_time": "17:00",
+  "friday_send_time": "15:00",
+  "glass_opacity": 0.15
+}

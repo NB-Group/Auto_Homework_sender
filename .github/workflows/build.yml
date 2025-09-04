@@ -1,0 +1,87 @@
+name: build-windows
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install nuitka
+
+      - name: Prepare dist (reuse prebuilt if present)
+        shell: pwsh
+        run: |
+          if (Test-Path 'dist_nuitka/main.dist') {
+            New-Item -ItemType Directory -Force -Path 'dist/main.dist' | Out-Null
+            Copy-Item -Recurse -Force 'dist_nuitka/main.dist/*' 'dist/main.dist/'
+            if (Test-Path 'dist/main.dist/main.exe') { Rename-Item 'dist/main.dist/main.exe' 'AutoHomework.exe' }
+          }
+
+      - name: Build with Nuitka (fallback)
+        shell: pwsh
+        run: |
+          if (Test-Path 'dist/main.dist/AutoHomework.exe') {
+            Write-Host 'Skip Nuitka build: dist/main.dist/AutoHomework.exe already exists.'
+          } else {
+            python build_nuitka_final.py
+          }
+
+      - name: Cache Inno Setup
+        uses: actions/cache@v4
+        with:
+          path: C:\Program Files (x86)\Inno Setup 6
+          key: innosetup-6
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (Test-Path 'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe') {
+            Write-Host 'Inno Setup already installed.'
+          } else {
+            choco install innosetup -y
+          }
+
+      - name: Make installer
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_setup.iss
+
+      - name: Zip portable
+        shell: pwsh
+        run: |
+          Compress-Archive -Path 'dist/main.dist/*' -DestinationPath 'AutoHomework-portable.zip'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoHomework-Installer
+          path: installer/*.exe
+
+      - name: Upload portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoHomework-Portable
+          path: AutoHomework-portable.zip
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installer/*.exe
+            AutoHomework-portable.zip
+
+

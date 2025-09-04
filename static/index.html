@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Homework Sender</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/animations.css">
+</head>
+
+<body>
+    <!-- 自定义标题栏 -->
+    <div class="title-bar">
+        <!-- 拖拽区域 -->
+        <div class="title-bar-drag pywebview-drag-region">
+            <div class="title-bar-title">作业发送助手</div>
+        </div>
+        <!-- 控制按钮区域 -->
+        <div class="title-bar-actions">
+            <button class="settings-btn" onclick="showSettings()">
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path fill="currentColor"
+                        d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11.03L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11.03C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
+                </svg>
+            </button>
+            <div class="title-bar-buttons">
+                <div class="title-bar-button minimize" onclick="appMinimize()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-dash-lg" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M2 8a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11A.5.5 0 0 1 2 8" />
+                    </svg>
+                </div>
+                <div class="title-bar-button close" onclick="appClose()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-x-lg" viewBox="0 0 16 16">
+                        <path
+                            d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 动态背景 -->
+    <div class="gradient-bg">
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="goo">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+                    <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8"
+                        result="goo" />
+                    <feBlend in="SourceGraphic" in2="goo" />
+                </filter>
+            </defs>
+        </svg>
+        <div class="gradients-container">
+            <div class="g1"></div>
+            <div class="g2"></div>
+            <div class="g3"></div>
+            <div class="g4"></div>
+            <div class="g5"></div>
+            <div class="interactive"></div>
+        </div>
+    </div>
+
+    <!-- 主页面 -->
+    <div id="main-page" class="page active">
+        <div class="main-container">
+            <h1 class="app-title">作业发送助手</h1>
+            <div class="glass-container main-send-btn">
+                <div class="glass-filter"></div>
+                <div class="glass-overlay"></div>
+                <div class="glass-specular"></div>
+                <div class="glass-content">
+                    <div class="send-btn-content">
+                        <div class="send-icon">
+                            <svg viewBox="0 0 24 24" width="32" height="32">
+                                <path fill="white" d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+                            </svg>
+                        </div>
+                        <span class="send-text">选择并发送作业</span>
+                    </div>
+                </div>
+            </div>
+            <div class="status-section">
+                <div class="status-indicator">
+                    <span id="status-text">点击上方按钮开始</span>
+                </div>
+                <div class="scheduler-status" id="scheduler-status">
+                    <span id="scheduler-info">调度器状态检查中...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 预览页面 -->
+    <div id="preview-page" class="page">
+        <div class="preview-container">
+            <div class="preview-header">
+                <button class="back-btn" onclick="goBack()">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="white" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+                    </svg>
+                </button>
+                <h2 class="preview-title">作业预览</h2>
+            </div>
+
+            <div class="glass-container preview-content-container">
+                <div class="glass-filter"></div>
+                <div class="glass-overlay"></div>
+                <div class="glass-specular"></div>
+                <div class="glass-content">
+                    <div id="preview-content" class="preview-content"></div>
+                </div>
+            </div>
+
+            <div class="preview-actions">
+                <button class="glass-btn secondary" onclick="goBack()">返回</button>
+                <button class="glass-btn primary" id="confirm-send-btn">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path fill="white" d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+                    </svg>
+                    确认发送
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置模态框 -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content glass-container">
+            <div class="glass-filter"></div>
+            <div class="glass-overlay"></div>
+            <div class="glass-specular"></div>
+            <div class="glass-content">
+                <div class="modal-header">
+                    <h3>设置</h3>
+                    <button class="close-modal" onclick="hideSettings()">×</button>
+                </div>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label for="access-token">钉钉 Access Token:</label>
+                        <input type="text" id="access-token" placeholder="请输入钉钉机器人的Access Token">
+                    </div>
+                    <div class="form-group">
+                        <label>开机自启：</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="autostart-ui">
+                            <span class="checkmark"></span>
+                            静默启动（无窗口）
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="ppt-file-path">PPT文件路径:</label>
+                        <div class="file-input-group">
+                            <input type="text" id="ppt-file-path" placeholder="选择PPT文件" readonly>
+                            <button type="button" class="glass-btn secondary" onclick="selectPPTFile()">浏览</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>自动发送时间:</label>
+                        <div class="schedule-group">
+                            <div class="schedule-item">
+                                <label for="weekday-time">周一-周四:</label>
+                                <input type="time" id="weekday-time" value="17:00">
+                            </div>
+                            <div class="schedule-item">
+                                <label for="friday-time">周五:</label>
+                                <input type="time" id="friday-time" value="15:00">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>玻璃效果：</label>
+                        <div class="range-group">
+                            <div class="range-row">
+                                <span class="range-label">模糊半径</span>
+                                <input type="range" id="glass-blur-range" min="0" max="60" step="1" value="20">
+                                <span class="range-value" id="glass-blur-value">20px</span>
+                            </div>
+                            <div class="range-row">
+                                <span class="range-label">透明度</span>
+                                <input type="range" id="glass-opacity-range" min="0" max="1" step="0.01" value="0.15">
+                                <span class="range-value" id="glass-opacity-value">0.15</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="theme-select">主题模式:</label>
+                        <div class="custom-select" id="theme-select">
+                            <div class="custom-select-button" onclick="toggleThemeSelect()">
+                                <span id="theme-select-text">深色模式</span>
+                                <svg class="custom-select-arrow" viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M7,10L12,15L17,10H7Z" />
+                                </svg>
+                            </div>
+                            <div class="custom-select-dropdown" id="theme-select-dropdown">
+                                <div class="custom-select-option" data-value="dark"
+                                    onclick="selectTheme('dark', '深色模式')">深色模式</div>
+                                <div class="custom-select-option" data-value="light"
+                                    onclick="selectTheme('light', '浅色模式')">浅色模式</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="auto-enabled">
+                            <span class="checkmark"></span>
+                            启用自动发送
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button class="glass-btn secondary" id="cancel-settings-btn" onclick="cancelSettings()">取消</button>
+                        <button class="glass-btn primary" id="save-settings-btn" onclick="saveSettings()">保存</button>
+                        <button class="glass-btn danger" onclick="exitApplication()">彻底退出</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载指示器 -->
+    <div id="loading" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">处理中...</div>
+    </div>
+
+    <script src="scripts/main.js"></script>
+    <script>
+      // 明确声明pywebview hook，确保前端能感知ready
+      if (window.pywebview){
+        console.log('pywebview presence detected at bootstrap');
+      } else {
+        console.log('pywebview not injected yet at bootstrap');
+      }
+    </script>
+</body>
+
+</html>

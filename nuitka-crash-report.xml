@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='utf8'?>
+<nuitka-compilation-report nuitka_version="2.7.12" nuitka_commercial_version="not installed" mode="standalone" completion="exception">
+  <exception exception_type="PermissionError" exception_value="[WinError 32] 另一个程序正在使用此文件，进程无法访问。: 'dist\\main.build\\module.PIL.DdsImagePlugin.obj'">
+Traceback (most recent call last):
+  File "E:\Anaconda\Lib\site-packages\nuitka\MainControl.py", line 1168, in main
+    _main()
+  File "E:\Anaconda\Lib\site-packages\nuitka\MainControl.py", line 996, in _main
+    main_module = _createMainModule()
+                  ^^^^^^^^^^^^^^^^^^^
+  File "E:\Anaconda\Lib\site-packages\nuitka\MainControl.py", line 186, in _createMainModule
+    cleanSconsDirectory(source_dir)
+  File "E:\Anaconda\Lib\site-packages\nuitka\build\SconsInterface.py", line 467, in cleanSconsDirectory
+    check(path)
+  File "E:\Anaconda\Lib\site-packages\nuitka\build\SconsInterface.py", line 463, in check
+    deleteFile(path, must_exist=True)
+  File "E:\Anaconda\Lib\site-packages\nuitka\utils\FileOperations.py", line 653, in deleteFile
+    os.unlink(path)
+PermissionError: [WinError 32] 另一个程序正在使用此文件，进程无法访问。: 'dist\\main.build\\module.PIL.DdsImagePlugin.obj'
+</exception>
+  <performance>
+    <memory_usage name="after_launch" value="46198784" />
+  </performance>
+  <data_file name="service_mode.py" source="${cwd}\service_mode.py" size="3699" reason="specified data file 'service_mode.py=service_mode.py' on command line" tags="user,copy" />
+  <data_file name="autostart_manager.py" source="${cwd}\autostart_manager.py" size="6716" reason="specified data file 'autostart_manager.py=autostart_manager.py' on command line" tags="user,copy" />
+  <data_file name="setup_autostart.py" source="${cwd}\setup_autostart.py" size="7899" reason="specified data file 'setup_autostart.py=setup_autostart.py' on command line" tags="user,copy" />
+  <data_file name="setup_autostart.bat" source="${cwd}\setup_autostart.bat" size="630" reason="specified data file 'setup_autostart.bat=setup_autostart.bat' on command line" tags="user,copy" />
+  <data_file name="AUTOSTART_README.md" source="${cwd}\AUTOSTART_README.md" size="3171" reason="specified data file 'AUTOSTART_README.md=AUTOSTART_README.md' on command line" tags="user,copy" />
+  <data_file name="static\index.html" source="${cwd}\static\index.html" size="11487" reason="specified data dir 'static' on command line" tags="user,copy,data-dir-contents" />
+  <data_file name="static\loading.html" source="${cwd}\static\loading.html" size="0" reason="specified data dir 'static' on command line" tags="user,copy,data-dir-contents" />
+  <data_file name="static\scripts\main.js" source="${cwd}\static\scripts\main.js" size="18460" reason="specified data dir 'static' on command line" tags="user,copy,data-dir-contents" />
+  <data_file name="static\styles\animations.css" source="${cwd}\static\styles\animations.css" size="3707" reason="specified data dir 'static' on command line" tags="user,copy,data-dir-contents" />
+  <data_file name="static\styles\components.css" source="${cwd}\static\styles\components.css" size="10938" reason="specified data dir 'static' on command line" tags="user,copy,data-dir-contents" />
+  <data_file name="static\styles\main.css" source="${cwd}\static\styles\main.css" size="8824" reason="specified data dir 'static' on command line" tags="user,copy,data-dir-contents" />
+  <data_composer blob_size="None" />
+  <command_line>
+    <option value="--standalone" />
+    <option value="--windows-console-mode=disable" />
+    <option value="--windows-icon-from-ico=icon.ico" />
+    <option value="--include-data-dir=static=static" />
+    <option value="--output-dir=dist" />
+    <option value="--output-filename=AutoHomework.exe" />
+    <option value="--assume-yes-for-downloads" />
+    <option value="--plugin-enable=tk-inter" />
+    <option value="--include-module=webview.platforms.edgechromium" />
+    <option value="--include-module=schedule" />
+    <option value="--include-module=requests" />
+    <option value="--include-module=pptx" />
+    <option value="--include-module=json" />
+    <option value="--include-module=threading" />
+    <option value="--include-module=pathlib" />
+    <option value="--include-module=winreg" />
+    <option value="--include-module=logging" />
+    <option value="--include-module=argparse" />
+    <option value="--include-data-file=service_mode.py=service_mode.py" />
+    <option value="--include-data-file=autostart_manager.py=autostart_manager.py" />
+    <option value="--include-data-file=setup_autostart.py=setup_autostart.py" />
+    <option value="--include-data-file=setup_autostart.bat=setup_autostart.bat" />
+    <option value="--include-data-file=AUTOSTART_README.md=AUTOSTART_README.md" />
+    <option value="main.py" />
+  </command_line>
+  <plugins>
+    <plugin name="anti-bloat" user_enabled="no" />
+    <plugin name="data-files" user_enabled="no" />
+    <plugin name="delvewheel" user_enabled="no" />
+    <plugin name="dll-files" user_enabled="no" />
+    <plugin name="eventlet" user_enabled="no" />
+    <plugin name="gevent" user_enabled="no" />
+    <plugin name="gi" user_enabled="no" />
+    <plugin name="glfw" user_enabled="no" />
+    <plugin name="implicit-imports" user_enabled="no" />
+    <plugin name="kivy" user_enabled="no" />
+    <plugin name="matplotlib" user_enabled="no" />
+    <plugin name="multiprocessing" user_enabled="no" />
+    <plugin name="options-nanny" user_enabled="no" />
+    <plugin name="pbr-compat" user_enabled="no" />
+    <plugin name="pkg-resources" user_enabled="no" />
+    <plugin name="playwright" user_enabled="no" />
+    <plugin name="pywebview" user_enabled="no" />
+    <plugin name="spacy" user_enabled="no" />
+    <plugin name="tk-inter" user_enabled="yes" />
+    <plugin name="transformers" user_enabled="no" />
+  </plugins>
+  <distributions />
+  <python python_exe="${sys.prefix}\python.exe" python_flavor="Anaconda Python" python_version="3.12.8" os_name="Windows" os_release="11" arch_name="x86_64" filesystem_encoding="utf-8">
+    <search_path>
+      <path value="${cwd}" />
+      <path value="${sys.prefix}\DLLs" />
+      <path value="${sys.prefix}\Lib" />
+      <path value="${sys.prefix}" />
+      <path value="~\AppData\Roaming\Python\Python312\site-packages" />
+      <path value="~\AppData\Roaming\Python\Python312\site-packages\win32" />
+      <path value="~\AppData\Roaming\Python\Python312\site-packages\win32\lib" />
+      <path value="~\AppData\Roaming\Python\Python312\site-packages\Pythonwin" />
+      <path value="${sys.prefix}\Lib\site-packages" />
+      <path value="${sys.prefix}\Lib\site-packages\setuptools\_vendor" />
+    </search_path>
+  </python>
+  <output run_filename="${cwd}\dist\main.dist\AutoHomework.exe" />
+</nuitka-compilation-report>

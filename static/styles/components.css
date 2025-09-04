@@ -1,0 +1,624 @@
+/* 开机启动状态指示器 */
+.status-enabled {
+    color: #4CAF50 !important;
+    font-weight: 500;
+}
+
+.status-disabled {
+    color: #f44336 !important;
+    font-weight: 500;
+}
+
+/* 玻璃容器组件 */
+.glass-container {
+  position: relative;
+  background: transparent;
+  border-radius: 20px;
+  overflow: hidden;
+  /* 固定模糊，不随设置变化 */
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  /* 允许子元素接收点击 */
+  pointer-events: auto;
+}
+
+[data-theme="light"] .glass-container {
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.glass-filter {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* 固定模糊，不随设置变化 */
+  backdrop-filter: blur(20px);
+  pointer-events: none; /* 允许点击穿透到父容器/内容 */
+}
+
+.glass-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  /* 固定覆盖颜色，不随设置变化（深色主题） */
+  background: rgba(255, 255, 255, 0.15);
+  pointer-events: none; /* 允许点击穿透到父容器/内容 */
+}
+
+[data-theme="light"] .glass-overlay {
+  /* 浅色主题固定覆盖颜色 */
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* 设置窗口的玻璃覆盖层使用固定透明度，不受全局 --glass-bg-opacity 影响 */
+.modal .glass-overlay {
+  background: rgba(255, 255, 255, 0.208);
+}
+
+[data-theme="light"] .modal .glass-overlay {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.glass-specular {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  overflow: hidden;
+  box-shadow: 
+    inset 1px 1px 0 var(--glass-highlight),
+    inset 0 0 10px rgba(255, 255, 255, 0.1);
+  pointer-events: none; /* 允许点击穿透到父容器/内容 */
+}
+
+[data-theme="light"] .glass-specular {
+  box-shadow: 
+    inset 1px 1px 0 var(--glass-highlight),
+    inset 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.glass-content {
+  position: relative;
+  z-index: 3;
+  padding: 1.5rem;
+}
+
+/* 按钮组件 */
+.glass-btn {
+  position: relative;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-primary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.glass-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  z-index: -1;
+}
+
+.glass-btn:hover::before {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.glass-btn.primary {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(147, 51, 234, 0.8));
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-btn.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .glass-btn.secondary {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.glass-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.glass-btn:active {
+  transform: translateY(0);
+}
+
+/* 预览页面样式 */
+.preview-container {
+  width: 90%;
+  max-width: 800px;
+  height: 80%;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-theme="light"] .back-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateX(-3px);
+}
+
+.preview-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.preview-content-container {
+  flex: 1;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.preview-content {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.preview-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.preview-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.preview-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.preview-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.preview-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+/* 模态框样式 */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  display: none; /* 默认完全隐藏，不占据事件层 */
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none; /* 隐藏时完全不接收事件 */
+  transition: all 0.3s ease;
+}
+
+.modal.active {
+  display: flex; /* 激活时显示 */
+  opacity: 1;
+  pointer-events: all; /* 仅激活时接收事件 */
+}
+
+/* 模态框动画状态 */
+.modal.animating {
+  display: flex; /* 动画期间也显示 */
+}
+
+.modal-content {
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  /* 让玻璃层固定不随内容滚动 */
+  overflow: hidden;
+  transform: scale(0.9);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto; /* 内容可点击 */
+}
+
+.modal.active .modal-content {
+  transform: scale(1);
+}
+
+/* 设置内容区滚动，滚动条在这里出现 */
+.modal-content .glass-content {
+  max-height: calc(80vh - 2rem);
+  overflow-y: auto;
+}
+
+/* 滚动条样式（可见即可） */
+.modal-content .glass-content::-webkit-scrollbar {
+  width: 8px;
+}
+.modal-content .glass-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+.modal-content .glass-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.close-modal {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.close-modal:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .close-modal:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* 表单样式 */
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* 滑块行样式 */
+.range-group { display: flex; flex-direction: column; gap: 0.8rem; }
+.range-row { display: grid; grid-template-columns: 80px 1fr 60px; align-items: center; gap: 0.8rem; }
+.range-label { color: var(--text-primary); opacity: 0.9; font-size: 0.9rem; }
+.range-value { color: var(--text-primary); opacity: 0.9; font-variant-numeric: tabular-nums; text-align: right; }
+.range-row input[type="range"] { width: 100%; }
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.form-group input[type="text"],
+.form-group input[type="time"],
+.form-group select {
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+[data-theme="light"] .form-group input[type="text"],
+[data-theme="light"] .form-group input[type="time"],
+[data-theme="light"] .form-group select {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="time"]:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* 自定义下拉框样式 */
+.custom-select {
+  position: relative;
+}
+
+.custom-select-button {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+}
+
+[data-theme="light"] .custom-select-button {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.custom-select-button:hover,
+.custom-select-button.active {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.custom-select-arrow {
+  transition: transform 0.3s ease;
+}
+
+.custom-select-button.active .custom-select-arrow {
+  transform: rotate(180deg);
+}
+
+.custom-select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  margin-top: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+[data-theme="light"] .custom-select-dropdown {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.custom-select-dropdown.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+}
+
+.custom-select-option {
+  padding: 12px 16px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  margin: 4px;
+}
+
+.custom-select-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .custom-select-option:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.custom-select-option.selected {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+/* 文件输入组样式 */
+.file-input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.file-input-group input {
+  flex: 1;
+}
+
+.file-input-group button {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+}
+
+/* 复选框样式 */
+.checkbox-label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.8rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  border-color: #3b82f6;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+/* 调度时间组样式 */
+.schedule-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.schedule-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.schedule-item label {
+  min-width: 80px;
+  color: var(--text-primary);
+  opacity: 0.9;
+  font-size: 0.9rem;
+}
+
+.schedule-item input[type="time"] {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+[data-theme="light"] .schedule-item input[type="time"] {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.schedule-item input[type="time"]:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 危险按钮样式 */
+.glass-btn.danger {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8));
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-btn.danger:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9));
+}
+
+/* 加载指示器 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.loading-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.loading-text {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 500;
+}

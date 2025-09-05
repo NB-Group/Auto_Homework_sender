@@ -1,101 +1,42 @@
-name: build-windows
+name: Build with Nuitka
 
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-permissions:
-  contents: write
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
-    env:
-      PYTHONIOENCODING: utf-8
-      PYTHONUTF8: "1"
+    defaults:
+      run:
+        shell: cmd
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install dependencies
         run: |
-          python -m pip install -r requirements.txt
-          python -m pip install nuitka
+          python -m pip install --upgrade pip
+          if exist requirements.txt pip install -r requirements.txt
+          pip install nuitka
 
-      - name: Prepare dist (reuse prebuilt if present)
-        shell: pwsh
+      - name: Build with Nuitka (exact flags)
         run: |
-          if (Test-Path 'dist_nuitka/main.dist') {
-            New-Item -ItemType Directory -Force -Path 'dist/main.dist' | Out-Null
-            Copy-Item -Recurse -Force 'dist_nuitka/main.dist/*' 'dist/main.dist/'
-            if (Test-Path 'dist/main.dist/main.exe') { Rename-Item 'dist/main.dist/main.exe' 'AutoHomework.exe' }
-          }
-          elseif (Test-Path 'dist_nuitka/main.dist2') {
-            New-Item -ItemType Directory -Force -Path 'dist/main.dist' | Out-Null
-            Copy-Item -Recurse -Force 'dist_nuitka/main.dist2/*' 'dist/main.dist/'
-            if (Test-Path 'dist/main.dist/main.exe') { Rename-Item 'dist/main.dist/main.exe' 'AutoHomework.exe' }
-          }
-
-      - name: Build with Nuitka (fallback)
-        shell: pwsh
-        run: |
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-          if (Test-Path 'dist/main.dist/AutoHomework.exe') {
-            Write-Host 'Skip Nuitka build: dist/main.dist/AutoHomework.exe already exists.'
-          } else {
-            python build_nuitka_final.py
-          }
-
-      - name: Cache Inno Setup
-        uses: actions/cache@v4
-        with:
-          path: C:\Program Files (x86)\Inno Setup 6
-          key: innosetup-6
-
-      - name: Install Inno Setup
-        shell: pwsh
-        run: |
-          if (Test-Path 'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe') {
-            Write-Host 'Inno Setup already installed.'
-          } else {
-            choco install innosetup -y
-          }
-
-      - name: Make installer
-        shell: pwsh
-        run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer_setup.iss"
-
-      - name: Zip portable
-        shell: pwsh
-        run: |
-          Compress-Archive -Path 'dist/main.dist/*' -DestinationPath 'AutoHomework-portable.zip'
+          set CACHE_DIR=%TEMP%\nuitka-cache
+          python -m nuitka --onefile --onefile-tempdir-spec=%CACHE_DIR% --standalone --assume-yes-for-downloads --disable-console --enable-plugin=tk-inter --include-data-dir=static=static --include-data-files=icon.ico=icon.ico --windows-icon-from-ico=icon.ico --output-dir=dist_nuitka main.py
 
       - name: Upload artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AutoHomework-Installer
-          path: installer/*.exe
-
-      - name: Upload portable
-        uses: actions/upload-artifact@v4
-        with:
-          name: AutoHomework-Portable
-          path: AutoHomework-portable.zip
-
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: |
-            installer/*.exe
-            AutoHomework-portable.zip
+          name: dist_nuitka
+          path: dist_nuitka/**
 
 

@@ -16,7 +16,7 @@ class CompleteBuilder:
 
     def __init__(self):
         self.project_root = Path(__file__).parent
-        self.dist_dir = self.project_root / "dist"
+        self.dist_dir = self.project_root / "dist_nuitka"
         self.build_dir = self.project_root / "build"
         self.installer_dir = self.project_root / "installer"
 
@@ -75,36 +75,27 @@ class CompleteBuilder:
         """使用Nuitka构建"""
         print("\n🔨 使用Nuitka构建可执行文件...")
 
+        cache_dir = os.environ.get("CACHE_DIR", os.path.join(os.getenv("TEMP", "."), "nuitka-cache"))
+
         cmd = [
             sys.executable, "-m", "nuitka",
+            "--onefile",
+            f"--onefile-tempdir-spec={cache_dir}",
             "--standalone",
-            "--windows-console-mode=disable",
-            "--windows-icon-from-ico=icon.ico",
-            "--include-data-dir=static=static",
-            "--output-dir=str(dist)",
-            "--output-filename=AutoHomework.exe",
             "--assume-yes-for-downloads",
-            "--plugin-enable=tk-inter",
-            "--include-module=webview.platforms.edgechromium",
-            "--include-module=schedule",
-            "--include-module=requests",
-            "--include-module=pptx",
-            "--include-module=json",
-            "--include-module=threading",
-            "--include-module=pathlib",
-            "--include-module=pystray",
-            "--include-module=PIL",
-            "--include-module=socket",
-            "--include-module=tempfile",
-            "--windows-disable-console",
-            "--show-progress",
+            "--disable-console",
+            "--enable-plugin=tk-inter",
+            "--include-data-dir=static=static",
+            "--include-data-files=icon.ico=icon.ico",
+            "--windows-icon-from-ico=icon.ico",
+            "--output-dir=dist_nuitka",
             "main.py"
         ]
 
         success = self.run_command(cmd, "Nuitka构建", check=False)
 
         # 检查构建结果
-        exe_path = self.dist_dir / "main.dist" / "AutoHomework.exe"
+        exe_path = self.dist_dir / "main.exe"
         if exe_path.exists():
             file_size = exe_path.stat().st_size / (1024 * 1024)
             print("✅ 构建成功!")

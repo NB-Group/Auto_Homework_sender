@@ -18,7 +18,7 @@ except Exception:
 def build_with_nuitka():
     """使用Nuitka构建可执行文件 - 正式版本 (一文件 + 独立目录输出)"""
 
-    cache_dir = os.environ.get("CACHE_DIR", os.path.join(os.getenv("TEMP", "."), "nuitka-cache"))
+    cache_dir = os.environ.get("CACHE_DIR", "nuitka-cache")
 
     nuitka_cmd = [
         sys.executable, "-m", "nuitka",
@@ -26,7 +26,7 @@ def build_with_nuitka():
         f"--onefile-tempdir-spec={cache_dir}",
         "--standalone",
         "--assume-yes-for-downloads",
-        "--disable-console",
+        "--windows-console-mode=disable",
         "--enable-plugin=tk-inter",
         "--include-data-dir=static=static",
         "--include-data-files=icon.ico=icon.ico",

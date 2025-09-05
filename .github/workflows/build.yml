@@ -29,8 +29,8 @@ jobs:
 
       - name: Build with Nuitka (exact flags)
         run: |
-          set CACHE_DIR=%TEMP%\nuitka-cache
-          python -m nuitka --onefile --onefile-tempdir-spec=%CACHE_DIR% --standalone --assume-yes-for-downloads --disable-console --enable-plugin=tk-inter --include-data-dir=static=static --include-data-files=icon.ico=icon.ico --windows-icon-from-ico=icon.ico --output-dir=dist_nuitka main.py
+          set CACHE_DIR=nuitka-cache
+          python -m nuitka --onefile --onefile-tempdir-spec=%CACHE_DIR% --standalone --assume-yes-for-downloads --windows-console-mode=disable --enable-plugin=tk-inter --include-data-dir=static=static --include-data-files=icon.ico=icon.ico --windows-icon-from-ico=icon.ico --output-dir=dist_nuitka main.py
 
       - name: Upload artifact
         if: always()

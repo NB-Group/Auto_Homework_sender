@@ -75,7 +75,7 @@ class CompleteBuilder:
         """使用Nuitka构建"""
         print("\n🔨 使用Nuitka构建可执行文件...")
 
-        cache_dir = os.environ.get("CACHE_DIR", os.path.join(os.getenv("TEMP", "."), "nuitka-cache"))
+        cache_dir = os.environ.get("CACHE_DIR", "nuitka-cache")
 
         cmd = [
             sys.executable, "-m", "nuitka",
@@ -83,7 +83,7 @@ class CompleteBuilder:
             f"--onefile-tempdir-spec={cache_dir}",
             "--standalone",
             "--assume-yes-for-downloads",
-            "--disable-console",
+            "--windows-console-mode=disable",
             "--enable-plugin=tk-inter",
             "--include-data-dir=static=static",
             "--include-data-files=icon.ico=icon.ico",

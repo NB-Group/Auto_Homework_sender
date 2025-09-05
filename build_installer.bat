@@ -22,11 +22,11 @@ if %errorlevel% neq 0 (
 echo [信息] 正在检查必要文件...
 
 :: 检查应用程序是否已构建
-if not exist "dist\main.dist\AutoHomework.exe" (
-    echo [错误] 未找到应用程序文件 dist\main.dist\AutoHomework.exe
+if not exist "dist_nuitka\main.exe" (
+    echo [错误] 未找到应用程序文件 dist_nuitka\main.exe
     echo.
-    echo 请先运行 build_release.py 构建应用程序：
-    echo python build_release.py
+    echo 请先运行 complete_build.py 或 build_auto.py 构建应用程序：
+    echo python complete_build.py
     echo.
     pause
     exit /b 1

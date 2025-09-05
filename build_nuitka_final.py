@@ -16,54 +16,33 @@ except Exception:
     pass
 
 def build_with_nuitka():
-    """使用Nuitka构建可执行文件 - 正式版本"""
-    
-    # Nuitka命令参数 - 禁用控制台的正式版本
+    """使用Nuitka构建可执行文件 - 正式版本 (一文件 + 独立目录输出)"""
+
+    cache_dir = os.environ.get("CACHE_DIR", os.path.join(os.getenv("TEMP", "."), "nuitka-cache"))
+
     nuitka_cmd = [
         sys.executable, "-m", "nuitka",
+        "--onefile",
+        f"--onefile-tempdir-spec={cache_dir}",
         "--standalone",
-        "--windows-console-mode=disable",
-        "--windows-icon-from-ico=icon.ico",
-        "--output-dir=dist",
-        "--output-filename=AutoHomework.exe",
         "--assume-yes-for-downloads",
-        "--plugin-enable=tk-inter",
-        "--include-module=webview.platforms.edgechromium",
-        "--include-module=schedule",
-        "--include-module=requests",
-        "--include-module=pptx",
-        "--include-module=json",
-        "--include-module=threading",
-        "--include-module=pathlib",
-        "--include-module=winreg",
-        "--include-module=logging",
-        "--include-module=argparse",
+        "--disable-console",
+        "--enable-plugin=tk-inter",
+        "--include-data-dir=static=static",
+        "--include-data-files=icon.ico=icon.ico",
+        "--windows-icon-from-ico=icon.ico",
+        "--output-dir=dist_nuitka",
+        "main.py",
     ]
 
-    # 条件包含静态资源与脚本文件，避免CI缺失文件导致失败
-    if os.path.isdir("static"):
-        nuitka_cmd += ["--include-data-dir=static=static"]
-    for f in [
-        "service_mode.py",
-        "autostart_manager.py",
-        "setup_autostart.py",
-        "setup_autostart.bat",
-        "AUTOSTART_README.md",
-    ]:
-        if os.path.exists(f):
-            nuitka_cmd += [f"--include-data-file={f}={f}"]
-
-    nuitka_cmd += ["main.py"]
-    
-    print("Start building with Nuitka (release mode)...")
+    print("Start building with Nuitka (onefile release)...")
     print("Command:", " ".join(nuitka_cmd))
-    
+
     try:
         result = subprocess.run(nuitka_cmd, check=True, capture_output=True, text=True)
         print("Build success!")
-        print("Output dir: dist/main.dist/")
-        print("Executable: dist/main.dist/AutoHomework.exe")
-        print("\nRelease build created (console disabled)")
+        print("Output dir: dist_nuitka/")
+        print("Executable: dist_nuitka/main.exe (or main.*)")
         return True
     except subprocess.CalledProcessError as e:
         print(f"Build failed: {e}")

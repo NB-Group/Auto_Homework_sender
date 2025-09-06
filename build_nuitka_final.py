@@ -31,7 +31,22 @@ def build_with_nuitka():
         "--include-data-dir=static=static",
         "--include-data-files=icon.ico=icon.ico",
         "--windows-icon-from-ico=icon.ico",
+        "--include-module=webview.platforms.edgechromium",
+        "--include-module=schedule",
+        "--include-module=requests",
+        "--include-module=pptx",
+        "--include-module=json",
+        "--include-module=threading",
+        "--include-module=pathlib",
+        "--include-module=pystray",
+        "--include-module=PIL",
+        "--include-module=socket",
+        "--include-module=tempfile",
+        "--include-module=winreg",
+        "--include-module=logging",
+        "--include-module=argparse",
         "--output-dir=dist_nuitka",
+        "--output-filename=AutoHomework.exe",
         "main.py",
     ]
 
@@ -42,7 +57,7 @@ def build_with_nuitka():
         result = subprocess.run(nuitka_cmd, check=True, capture_output=True, text=True)
         print("Build success!")
         print("Output dir: dist_nuitka/")
-        print("Executable: dist_nuitka/main.exe (or main.*)")
+        print("Executable: dist_nuitka/AutoHomework.exe")
         return True
     except subprocess.CalledProcessError as e:
         print(f"Build failed: {e}")

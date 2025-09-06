@@ -40,10 +40,14 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop icon"
 
 [Files]
-; 使用 Nuitka 一文件输出（来自 dist_nuitka\main.exe），并重命名为 AutoHomework.exe
-Source: "dist_nuitka\main.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
+; 使用 Nuitka 一文件输出（来自 dist_nuitka\AutoHomework.exe）
+Source: "dist_nuitka\AutoHomework.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
 Source: "icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion; DestName: "README.txt"
+
+[InstallDelete]
+; 清理历史遗留的源码文件，确保安装路径干净
+Type: files; Name: "{app}\*.py"
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"
@@ -53,7 +57,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 ; 不再提供安装时开机自启动选项，交由应用内部设置
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Flags: nowait runasoriginaluser
 
 [UninstallRun]
 ; 卸载时停止可能正在运行的程序

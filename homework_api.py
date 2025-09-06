@@ -116,12 +116,14 @@ class HomeworkAPI:
                 
                 for shape in last_slide.shapes:
                     if hasattr(shape, "text") and shape.text.strip():
-                        # 每行一个无序列表项，保证钉钉按行换行显示
+                        # 每行一个无序列表项（不额外添加空白行）
                         normalized = shape.text.replace('\r', '\n')
                         lines = [ln.strip() for ln in normalized.split('\n') if ln.strip()]
                         for ln in lines:
                             markdown_content += f"- {ln}\n"
-                        markdown_content += "\n"
+
+            # 去除结尾多余空白行，仅保留必要结尾换行
+            markdown_content = markdown_content.rstrip() + "\n"
             
             return {"success": True, "content": markdown_content}
         except Exception as e:

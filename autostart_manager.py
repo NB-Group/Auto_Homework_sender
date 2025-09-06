@@ -32,31 +32,53 @@ class AutostartManager:
     def _get_executable_paths(self):
         """获取可执行文件路径"""
         try:
-            # 打包后的 exe：直接使用当前可执行文件路径，避免名称硬编码
-            if getattr(sys, 'frozen', False) or hasattr(sys, '_MEIPASS'):
-                exe_dir = os.path.dirname(sys.executable)
-                self.exe_path = sys.executable  # 实际发布名称（如 AutoHomework.exe）
-                self.service_path = os.path.join(exe_dir, "service_mode.exe")
-            else:
-                # 开发环境 - 使用pythonw.exe避免显示CMD窗口
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                self.exe_path = os.path.join(script_dir, "main.py")
-                self.service_path = os.path.join(script_dir, "service_mode.py")
+            # 首先定位应用目录
+            app_dir = None
+            try:
+                if getattr(sys, 'frozen', False) or hasattr(sys, '_MEIPASS'):
+                    app_dir = os.path.dirname(sys.executable)
+                else:
+                    app_dir = os.path.dirname(os.path.abspath(__file__))
+            except Exception:
+                app_dir = os.path.dirname(os.path.abspath(__file__))
 
-                # 获取pythonw.exe路径（无窗口版本的Python解释器）
+            # 规范化当前解释器与候选 exe
+            exe_basename = os.path.basename(sys.executable).lower()
+            current_exe = sys.executable
+            candidate_auto = os.path.join(app_dir, 'AutoHomework.exe')
+            candidate_main = os.path.join(app_dir, 'main.exe')
+
+            # 选择策略：
+            # 1) 若存在 AutoHomework.exe，优先使用它
+            # 2) 否则若存在 main.exe，使用它
+            # 3) 否则：开发/非打包，使用 pythonw.exe 调用 main.py
+            if os.path.exists(candidate_auto):
+                self.exe_path = f'"{candidate_auto}" --ui --hidden'
+                self.service_path = f'"{candidate_auto}" --service'
+            elif os.path.exists(candidate_main):
+                self.exe_path = f'"{candidate_main}" --ui --hidden'
+                self.service_path = f'"{candidate_main}" --service'
+            elif (getattr(sys, 'frozen', False) or (exe_basename.endswith('.exe') and exe_basename not in ("python.exe", "pythonw.exe"))):
+                # 打包但未找到上述候选时，回退到 sys.executable
+                self.exe_path = f'"{current_exe}" --ui --hidden'
+                self.service_path = f'"{current_exe}" --service'
+            else:
+                # 开发/非打包：使用 pythonw.exe + main.py，避免控制台窗口
+                script_dir = app_dir
+                main_py = os.path.join(script_dir, "main.py")
+                svc_py = os.path.join(script_dir, "service_mode.py")
+
+                # 获取 pythonw.exe
                 python_exe = sys.executable
                 pythonw_exe = python_exe.replace('python.exe', 'pythonw.exe')
-
-                # 验证pythonw.exe是否存在，如果不存在则回退到python.exe
                 if os.path.exists(pythonw_exe):
                     python_exe = pythonw_exe
                     self.logger.info("使用pythonw.exe避免显示CMD窗口")
                 else:
                     self.logger.warning("pythonw.exe不存在，使用python.exe（可能会显示CMD窗口）")
 
-                # 构建启动命令
-                self.exe_path = f'"{python_exe}" "{self.exe_path}" --ui'
-                self.service_path = f'"{python_exe}" "{self.service_path}" --service'
+                self.exe_path = f'"{python_exe}" "{main_py}" --ui --hidden'
+                self.service_path = f'"{python_exe}" "{svc_py}" --service'
 
             self.logger.info(f"UI启动路径: {self.exe_path}")
             self.logger.info(f"服务启动路径: {self.service_path}")

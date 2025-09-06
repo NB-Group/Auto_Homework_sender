@@ -250,6 +250,33 @@
   pointer-events: all; /* 仅激活时接收事件 */
 }
 
+/* 为更新提示等新增更柔和的淡入动画 */
+.modal:not(.active) .modal-content {
+  transform: scale(0.95);
+  opacity: 0.8;
+}
+
+.modal.active .modal-content {
+  transform: scale(1);
+  opacity: 1;
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease;
+}
+
+/* 进度条 */
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  /* 与 .glass-btn.primary 同色系 */
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(147, 51, 234, 0.9));
+  transition: width 0.2s ease;
+}
+
 /* 模态框动画状态 */
 .modal.animating {
   display: flex; /* 动画期间也显示 */

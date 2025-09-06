@@ -30,7 +30,7 @@ jobs:
       - name: Build with Nuitka (exact flags)
         run: |
           set CACHE_DIR=nuitka-cache
-          python -m nuitka --onefile --onefile-tempdir-spec=%CACHE_DIR% --standalone --assume-yes-for-downloads --windows-console-mode=disable --enable-plugin=tk-inter --include-data-dir=static=static --include-data-files=icon.ico=icon.ico --windows-icon-from-ico=icon.ico --output-dir=dist_nuitka main.py
+          python -m nuitka --onefile --onefile-tempdir-spec=%CACHE_DIR% --standalone --assume-yes-for-downloads --windows-console-mode=disable --enable-plugin=tk-inter --include-data-dir=static=static --include-data-files=icon.ico=icon.ico --windows-icon-from-ico=icon.ico --include-module=webview.platforms.edgechromium --include-module=schedule --include-module=requests --include-module=pptx --include-module=json --include-module=threading --include-module=pathlib --include-module=pystray --include-module=PIL --include-module=socket --include-module=tempfile --include-module=winreg --include-module=logging --include-module=argparse --output-dir=dist_nuitka --output-filename=AutoHomework.exe main.py
 
       - name: Upload artifact
         if: always()

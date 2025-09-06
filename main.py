@@ -50,7 +50,7 @@ def _resolve_index_html_path() -> str:
 _MAIN_WINDOW = None
 _REST_SERVER = None
 REST_FIXED_PORT = 58701  # 固定REST端口，避免随机端口导致发现失败
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.0"  # 应与实际发布版本一致
 
 
 class ScheduleManager:
@@ -486,7 +486,20 @@ class ApiBridge:
 
     def open_devtools(self):
         """打开/切换 DevTools（需要 webview.start(debug=True)）"""
-        return {"success": False, "error": "DevTools 已禁用"}
+        try:
+            global _MAIN_WINDOW
+            if _MAIN_WINDOW is None:
+                return {"success": False, "error": "窗口不可用"}
+            # 兼容不同后端
+            if hasattr(_MAIN_WINDOW, "toggle_devtools"):
+                _MAIN_WINDOW.toggle_devtools()
+                return {"success": True}
+            if hasattr(_MAIN_WINDOW, "open_devtools"):
+                _MAIN_WINDOW.open_devtools()
+                return {"success": True}
+            return {"success": False, "error": "当前后端不支持 DevTools"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     # 基础能力
     def select_ppt_file(self):
@@ -574,6 +587,21 @@ class RestServer:
         self.port = None
         self._thread = None
         app = Flask(__name__)
+        # 下载进度与取消标记
+        self._dl_state = {"stage": "idle", "percent": 0, "received": 0, "total": 0, "source": "", "portable": False}
+        self._dl_cancel = False
+        # 更新检查缓存（默认60分钟TTL），并尝试从磁盘恢复
+        self._update_cache = {"ts": 0, "data": None}
+        self._update_cache_ttl = 3600
+        try:
+            self._update_cache_file = os.path.join(get_app_data_path(), 'update_cache.json')
+            if os.path.exists(self._update_cache_file):
+                import json as _json
+                with open(self._update_cache_file, 'r', encoding='utf-8') as f:
+                    self._update_cache = _json.load(f)
+                print('[Update][cache] LOAD from file, ts=', self._update_cache.get('ts'))
+        except Exception as e:
+            print('[Update][cache] load failed:', e)
 
         def cors(resp):
             resp.headers['Access-Control-Allow-Origin'] = '*'
@@ -593,6 +621,21 @@ class RestServer:
         def ping():
             return cors(make_response(jsonify({"success": True, "pong": True}), 200))
 
+        @app.route('/api/update/progress', methods=['GET'])
+        def update_progress():
+            try:
+                return cors(make_response(jsonify({"success": True, **self._dl_state}), 200))
+            except Exception as e:
+                return cors(make_response(jsonify({"success": False, "error": str(e)}), 200))
+
+        @app.route('/api/update/cancel', methods=['POST'])
+        def update_cancel():
+            try:
+                self._dl_cancel = True
+                return cors(make_response(jsonify({"success": True}), 200))
+            except Exception as e:
+                return cors(make_response(jsonify({"success": False, "error": str(e)}), 200))
+
         @app.route('/api/update/check', methods=['GET'])
         def update_check():
             """从 GitHub Releases 检查最新版本。返回 tag、下载链接和是否有更新。"""
@@ -600,33 +643,332 @@ class RestServer:
             owner_repo = 'NB-Group/Auto_Homework_sender'
             try:
                 import requests as _rq
-                r = _rq.get(f'https://api.github.com/repos/{owner_repo}/releases/latest', timeout=8)
-                info = r.json()
-                latest_tag = info.get('tag_name') or ''
-                assets = info.get('assets') or []
+
+                def _gh_get_json(url: str):
+                    headers = {
+                        'Accept': 'application/vnd.github+json',
+                        'X-GitHub-Api-Version': '2022-11-28',
+                    }
+                    token = os.environ.get('AH_GH_TOKEN') or os.environ.get('GITHUB_TOKEN')
+                    if token:
+                        headers['Authorization'] = f'Bearer {token}'
+                    r = _rq.get(url, headers=headers, timeout=8)
+                    try:
+                        print('[Update][GET]', url, '->', r.status_code)
+                    except Exception:
+                        pass
+                    return r.status_code, r.json()
+
+                # 缓存命中：仅在未 force 且缓存有效（60分钟）时返回
+                import time as _t
+                force = str(flask_request.args.get('force', '0')).strip() in ('1','true','yes')
+                try:
+                    if (not force) and self._update_cache.get('data') and (_t.time() - float(self._update_cache.get('ts', 0)) < self._update_cache_ttl):
+                        cached = self._update_cache.get('data')
+                        print('[Update][cache] HIT check force=', force)
+                        return cors(make_response(jsonify({'success': True, **cached}), 200))
+                except Exception:
+                    pass
+
+                # 先取 /releases/latest（可选使用 token 以避免 403 限流）
+                status, info = _gh_get_json(f'https://api.github.com/repos/{owner_repo}/releases/latest')
+                latest_tag = (info or {}).get('tag_name') or ''
+                assets = (info or {}).get('assets') or []
                 asset_url = ''
                 for a in assets:
                     name = a.get('name','')
                     if name.endswith('.exe'):
                         asset_url = a.get('browser_download_url')
                         break
-                mirrors = []
-                if asset_url:
+                # 回退：/releases/latest 可能在草稿状态不可见或无资产，尝试列表接口
+                if not asset_url:
+                    status_list, rels = _gh_get_json(f'https://api.github.com/repos/{owner_repo}/releases?per_page=5')
                     try:
-                        # 常用 GitHub 加速镜像前缀（多备选）
+                        print('[Update][check] releases count:', len(rels) if isinstance(rels, list) else 'n/a')
+                    except Exception:
+                        pass
+                    if isinstance(rels, list):
+                        for rel in rels:
+                            if rel.get('draft') or rel.get('prerelease'):
+                                continue
+                            latest_tag = rel.get('tag_name') or latest_tag
+                            try:
+                                print('[Update][check] try release:', latest_tag, 'assets:', [x.get('name') for x in (rel.get('assets') or [])])
+                            except Exception:
+                                pass
+                            for a in (rel.get('assets') or []):
+                                name = a.get('name','')
+                                if name.endswith('.exe'):
+                                    asset_url = a.get('browser_download_url')
+                                    break
+                # 若仍没有下载链接，返回失败（避免前端误判为最新）
+                mirrors = []
+                if not asset_url:
+                    try:
+                        print('[Update][check] no exe asset found. latest_tag=', latest_tag)
+                    except Exception:
+                        pass
+                    return cors(make_response(jsonify({'success': False, 'error': '未找到安装包资产(.exe)'}), 200))
+
+                    try:
                         mirrors = [
+                        'https://hk.gh-proxy.com/',
+                        'https://gh-proxy.com/',
+                        'https://cdn.gh-proxy.com/',
+                        'https://edgeone.gh-proxy.com/',
                             'https://ghproxy.com/',
                             'https://mirror.ghproxy.com/'
                         ]
                         mirrors = [m + asset_url for m in mirrors]
                     except Exception:
                         mirrors = []
-                return cors(make_response(jsonify({
-                    'success': True,
-                    'latest': latest_tag,
-                    'download': asset_url,
-                    'mirrors': mirrors
-                }), 200))
+
+                payload = {'latest': latest_tag, 'download': asset_url, 'mirrors': mirrors}
+                try:
+                    self._update_cache = {"ts": __import__('time').time(), "data": payload}
+                    # 持久化写入
+                    import json as _json
+                    os.makedirs(get_app_data_path(), exist_ok=True)
+                    with open(self._update_cache_file, 'w', encoding='utf-8') as f:
+                        _json.dump(self._update_cache, f, ensure_ascii=False)
+                    print('[Update][cache] SET & SAVE ok')
+                except Exception:
+                    pass
+                return cors(make_response(jsonify({'success': True, **payload}), 200))
+            except Exception as e:
+                return cors(make_response(jsonify({'success': False, 'error': str(e)}), 200))
+
+        @app.route('/api/update/apply', methods=['POST'])
+        def update_apply():
+            """下载最新安装包并静默安装，然后退出当前应用。"""
+            try:
+                import requests as _rq
+                import tempfile as _tf
+                import subprocess as _sp
+                import threading as _th
+                import time as _t
+
+                owner_repo = 'NB-Group/Auto_Homework_sender'
+
+                def _gh_get_json(url: str):
+                    headers = {
+                        'Accept': 'application/vnd.github+json',
+                        'X-GitHub-Api-Version': '2022-11-28',
+                    }
+                    token = os.environ.get('AH_GH_TOKEN') or os.environ.get('GITHUB_TOKEN')
+                    if token:
+                        headers['Authorization'] = f'Bearer {token}'
+                    r = _rq.get(url, headers=headers, timeout=10)
+                    try:
+                        print('[Update][GET]', url, '->', r.status_code)
+                    except Exception:
+                        pass
+                    return r.status_code, r.json()
+
+                status, info = _gh_get_json(f'https://api.github.com/repos/{owner_repo}/releases/latest')
+                assets = (info or {}).get('assets') or []
+                asset_url = ''
+                # 判断是否便携/开发：优先使用打包目录；开发模式下使用源码目录
+                _frozen = bool(getattr(sys, 'frozen', False) or hasattr(sys, '_MEIPASS'))
+                dev_mode = not _frozen
+                app_dir = os.path.dirname(sys.executable) if _frozen else os.path.abspath(os.path.dirname(__file__))
+                # 认为“便携”= 允许写且不在 Program Files；开发模式也视为“可写的便携目录”
+                is_portable = (('program files' not in app_dir.lower()) and os.access(app_dir, os.W_OK))
+                # 便携优先选 zip 资产，否则选 exe
+                pick_ext = '.zip' if is_portable else '.exe'
+                for a in assets:
+                    name = a.get('name','')
+                    if name.endswith(pick_ext):
+                        asset_url = a.get('browser_download_url')
+                        break
+                if not asset_url:
+                    status_list, rels = _gh_get_json(f'https://api.github.com/repos/{owner_repo}/releases?per_page=5')
+                    if isinstance(rels, list):
+                        for rel in rels:
+                            if rel.get('draft') or rel.get('prerelease'):
+                                continue
+                            for a in (rel.get('assets') or []):
+                                name = a.get('name','')
+                                if name.endswith(pick_ext):
+                                    asset_url = a.get('browser_download_url')
+                                    break
+                            if asset_url:
+                                break
+                if not asset_url:
+                    return cors(make_response(jsonify({'success': False, 'error': '未找到可下载的安装包'}), 200))
+
+                # 准备候选镜像与直连URL，依次尝试
+                candidates = []
+                # 优先香港线路
+                try:
+                    if asset_url.startswith('https://'):
+                        base = asset_url
+                        candidates.extend([
+                            'https://hk.gh-proxy.com/' + base,
+                            'https://gh-proxy.com/' + base,
+                            'https://cdn.gh-proxy.com/' + base,
+                            'https://edgeone.gh-proxy.com/' + base,
+                            'https://ghproxy.com/' + base,
+                            'https://mirror.ghproxy.com/' + base,
+                            base,
+                        ])
+                except Exception:
+                    pass
+                # 把缓存中的镜像追加到尾部（不改变优先级），并做去重
+                try:
+                    cached = (self._update_cache or {}).get('data') or {}
+                    mirrors = cached.get('mirrors') or []
+                    candidates.extend(mirrors)
+                except Exception:
+                    pass
+                # 去重保持顺序
+                try:
+                    seen = set()
+                    dedup = []
+                    for u in candidates:
+                        if u and (u not in seen):
+                            dedup.append(u)
+                            seen.add(u)
+                    candidates = dedup
+                except Exception:
+                    pass
+
+                # 下载到临时文件（防止被“正在使用”）：保持在系统临时目录，避免写入安装目录
+                tmp_dir = _tf.gettempdir()
+                file_ext = '.zip' if is_portable else '.exe'
+                installer_path = os.path.join(tmp_dir, f'AutoHomework_Update_{int(_t.time())}{file_ext}')
+                try:
+                    print('[Update][apply] save to:', installer_path)
+                except Exception:
+                    pass
+
+                last_err = None
+                self._dl_cancel = False
+                self._dl_state = {"stage": "downloading", "percent": 0, "received": 0, "total": 0, "source": "", "portable": is_portable}
+                for url in candidates:
+                    try:
+                        print('[Update][apply] try url:', url)
+                        if self._dl_cancel:
+                            raise Exception('cancelled')
+                        with _rq.get(url, stream=True, timeout=45, allow_redirects=True, proxies={}) as resp:
+                            resp.raise_for_status()
+                            total = int(resp.headers.get('Content-Length') or 0)
+                            try:
+                                print(f'[Update][headers] Content-Length: {resp.headers.get("Content-Length")}, Total: {total}')
+                                print(f'[Update][headers] Transfer-Encoding: {resp.headers.get("Transfer-Encoding")}')
+                            except Exception:
+                                pass
+                            self._dl_state.update({"total": total, "source": url})
+                            with open(installer_path, 'wb') as f:
+                                for chunk in resp.iter_content(chunk_size=1024*256):
+                                    if chunk:
+                                        f.write(chunk)
+                                        self._dl_state["received"] += len(chunk)
+                                        if total:
+                                            self._dl_state["percent"] = int(self._dl_state["received"] * 100 / total)
+                                        else:
+                                            # 无 Content-Length 时的伪进度：基于已接收字节数估算
+                                            mb_received = self._dl_state["received"] / (1024*1024)
+                                            # 更保守的估算：每MB约5%，最多90%
+                                            estimated_pct = min(90, int(mb_received * 5))
+                                            self._dl_state["percent"] = estimated_pct
+                                        try:
+                                            print(f'[Update][progress] {self._dl_state["percent"]}% - {self._dl_state["received"]} bytes')
+                                        except Exception:
+                                            pass
+                                        if self._dl_cancel:
+                                            raise Exception('cancelled')
+                        last_err = None
+                        break
+                    except Exception as e:
+                        if str(e) == 'cancelled':
+                            # 用户取消：停止后续候选重试，返回成功但未开始安装
+                            self._dl_state.update({"stage": "idle"})
+                            return cors(make_response(jsonify({'success': False, 'error': '已取消'}), 200))
+                        last_err = e
+                        try:
+                            print('[Update][apply] download failed for', url)
+                        except Exception:
+                            pass
+
+                if last_err is not None:
+                    # 返回简短错误信息
+                    return cors(make_response(jsonify({'success': False, 'error': '下载安装包失败：网络不稳定或镜像不可用，请稍后重试或手动下载。'}), 200))
+
+                # 进入安装/解压阶段
+                self._dl_state.update({"stage": "installing", "percent": 100})
+                try:
+                    print('[Update][apply] download completed, starting installation...')
+                except Exception:
+                    pass
+
+                # 便携/开发：解压覆盖并重启
+                if is_portable:
+                    try:
+                        import zipfile as _zf
+                        # 开发模式不覆盖源码，解压到临时目录
+                        exe_dir = app_dir if not dev_mode else os.path.join(tmp_dir, f'AutoHomework_Portable_{int(_t.time())}')
+                        try:
+                            os.makedirs(exe_dir, exist_ok=True)
+                        except Exception:
+                            pass
+                        # 生成临时updater脚本，退出后解压覆盖再重启（优先启动打包后的 exe，不存在则回退 main.exe，再不行回退 python main.py）
+                        updater = os.path.join(tmp_dir, f'ah_updater_{int(_t.time())}.bat')
+                        with open(updater, 'w', encoding='utf-8') as bf:
+                            bf.write("@echo off\r\n")
+                            bf.write("ping -n 2 127.0.0.1 >nul\r\n")
+                            # 使用 PowerShell Expand-Archive 覆盖
+                            ps = f"powershell -NoProfile -Command \"Expand-Archive -Force '{installer_path.replace('\\','/')}' '{exe_dir.replace('\\','/')}'\""
+                            bf.write(ps + "\r\n")
+                            exe_path = os.path.join(exe_dir, 'AutoHomework.exe')
+                            main_exe = os.path.join(exe_dir, 'main.exe')
+                            py_main = os.path.join(exe_dir, 'main.py')
+                            bf.write(f"if exist \"{exe_path}\" ( start \"\" \"{exe_path}\" ) else if exist \"{main_exe}\" ( start \"\" \"{main_exe}\" ) else ( start \"\" \"{sys.executable}\" \"{py_main}\" )\r\n")
+                            bf.write(f"del \"{installer_path}\"\r\n")
+                            bf.write("del %~f0\r\n")
+                        try:
+                            print(f'[Update][apply] starting updater: {updater}')
+                            _sp.Popen(['cmd', '/c', 'start', '', updater], close_fds=True, creationflags=getattr(_sp, 'CREATE_NO_WINDOW', 0))
+                        except Exception as e:
+                            print(f'[Update][apply] fallback updater start: {e}')
+                            _sp.Popen([updater], close_fds=True)
+                    except Exception as e:
+                        return cors(make_response(jsonify({'success': False, 'error': f'解压更新失败，请手动下载替换。'}), 200))
+                else:
+                    # 安装器：静默覆盖安装并重启
+                    try:
+                        _sp.Popen([installer_path, '/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', '/CLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS'], close_fds=True)
+                        try:
+                            print('[Update][apply] installer started')
+                        except Exception:
+                            pass
+                    except Exception as e:
+                        try:
+                            print('[Update][apply] start installer error:', e)
+                        except Exception:
+                            pass
+                        return cors(make_response(jsonify({'success': False, 'error': f'启动安装失败: {e}'}), 200))
+
+                # 异步退出当前应用，给前端留出响应时间
+                def _delayed_exit():
+                    try:
+                        import time as _t
+                        _t.sleep(2.0)
+                    except Exception:
+                        pass
+                    try:
+                        self.scheduler.shutdown()
+                    except Exception:
+                        pass
+                    try:
+                        print('[Update][apply] exiting current app for installer...')
+                    except Exception:
+                        pass
+                    os._exit(0)
+
+                _th.Thread(target=_delayed_exit, daemon=True).start()
+
+                return cors(make_response(jsonify({'success': True, 'started': True}), 200))
             except Exception as e:
                 return cors(make_response(jsonify({'success': False, 'error': str(e)}), 200))
 
@@ -656,6 +998,14 @@ class RestServer:
                 self.scheduler.apply_config(self.api.get_config())
             except Exception:
                 pass
+            # 同步应用开机自启设置（含 --hidden）
+            try:
+                _auto_res = self.autostart.apply_config(data)
+                if result and isinstance(result, dict):
+                    result["autostart"] = _auto_res
+            except Exception as _e:
+                if result and isinstance(result, dict):
+                    result["autostart_error"] = str(_e)
             return cors(make_response(jsonify(result), 200))
 
         @app.route('/api/scheduler/status', methods=['GET'])
@@ -887,7 +1237,7 @@ class RestServer:
             return {"success": False, "error": str(e)}
 
 
-def start_ui_mode(instance_manager=None):
+def start_ui_mode(instance_manager=None, hidden=False):
     """启动UI模式"""
     api = HomeworkAPI()
     scheduler = ScheduleManager(api)
@@ -900,6 +1250,20 @@ def start_ui_mode(instance_manager=None):
     global _REST_SERVER
     _REST_SERVER = RestServer(api, scheduler, autostart)
     _REST_SERVER.start()
+
+    # 应用启动后根据配置自动确保自启动项（若配置中已勾选）
+    try:
+        cfg = api.get_config()
+        if bool(cfg.get('auto_start_ui', True)):
+            try:
+                autostart.apply_config(cfg)
+            except Exception as _e:
+                try:
+                    print('[Autostart] apply on startup failed:', _e)
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
     index_html = _resolve_index_html_path()
 
@@ -921,12 +1285,21 @@ def start_ui_mode(instance_manager=None):
         height=dyn_height,
         easy_drag=False,
         frameless=True,
+        shadow=True,
         resizable=True,
+        hidden=bool(hidden),
     )
 
     # 保存全局窗口引用，供 ApiBridge 使用
     global _MAIN_WINDOW
     _MAIN_WINDOW = window
+
+    # 根据启动参数决定是否隐藏窗口（用于开机自启场景）
+    try:
+        if hidden and _MAIN_WINDOW:
+            _MAIN_WINDOW.hide()
+    except Exception:
+        pass
 
     # 启动单实例监听器
     # instance_manager.listen_for_commands() # 已在become_server中启动
@@ -957,15 +1330,17 @@ def start_ui_mode(instance_manager=None):
     except Exception:
         pass
 
-    # 注入 REST 服务基地址
+    # 注入 REST 服务基地址与版本/环境标识
     try:
         def _inject_api_base():
             try:
                 if _REST_SERVER and _REST_SERVER.base_url:
+                    is_dev = not (getattr(sys, 'frozen', False) or hasattr(sys, '_MEIPASS'))
                     js = (
                         f"window.__API_BASE__ = '{_REST_SERVER.base_url}';"
                         f"window.__APP_VERSION__ = '{APP_VERSION}';"
-                        "console.log('[REST] BASE', window.__API_BASE__, 'VER', window.__APP_VERSION__);"
+                        f"window.__IS_DEV__ = {'true' if is_dev else 'false'};"
+                        "console.log('[REST] BASE', window.__API_BASE__, 'VER', window.__APP_VERSION__, 'DEV', window.__IS_DEV__);"
                     )
                     window.evaluate_js(js)
             except Exception:
@@ -1055,7 +1430,7 @@ def start_ui_mode(instance_manager=None):
                     os.environ.pop('WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS', None)
         except Exception:
             pass
-        # 关闭调试模式，禁用 DevTools
+        # 关闭调试（禁用 DevTools）
         webview.start(gui=gui, debug=False, http_server=True)
     except KeyboardInterrupt:
         print("\n[Signal] 捕获到KeyboardInterrupt，正在退出...")
@@ -1081,8 +1456,9 @@ def main():
     import threading
     import atexit
 
-    # 提前建立日志输出（发布版无控制台时也能排查）
+    # 日志输出：默认输出到控制台；仅当设置 AH_LOG_TO_FILE=1 时才重定向到文件
     try:
+        if os.environ.get('AH_LOG_TO_FILE') == '1':
         log_dir = get_app_data_path()
         os.makedirs(log_dir, exist_ok=True)
         log_path = os.path.join(log_dir, 'auto_homework.log')
@@ -1090,6 +1466,8 @@ def main():
         sys.stdout = log_file
         sys.stderr = log_file
         print("[Log] 日志已重定向:", log_path)
+        else:
+            print("[Log] 输出到控制台 (设置 AH_LOG_TO_FILE=1 可重定向到文件)")
         print("[Env] exe:", sys.executable)
         print("[Env] cwd:", os.getcwd())
     except Exception:
@@ -1152,6 +1530,8 @@ def main():
                        help='以服务模式启动（后台运行，无GUI）')
     parser.add_argument('--ui', action='store_true',
                        help='以UI模式启动（默认）')
+    parser.add_argument('--hidden', action='store_true',
+                       help='启动后隐藏窗口（用于开机自启）')
 
     args = parser.parse_args()
 
@@ -1163,7 +1543,7 @@ def main():
         else:
             # 默认启动UI模式
             print("启动UI模式...")
-            start_ui_mode(instance_manager)
+            start_ui_mode(instance_manager, hidden=bool(getattr(args, 'hidden', False)))
     except KeyboardInterrupt:
         print("\n[Signal] 捕获到KeyboardInterrupt，正在清理...")
         try:

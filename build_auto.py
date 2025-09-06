@@ -87,7 +87,22 @@ class AutoBuilder:
             "--include-data-dir=static=static",
             "--include-data-files=icon.ico=icon.ico",
             "--windows-icon-from-ico=icon.ico",
+            "--include-module=webview.platforms.edgechromium",
+            "--include-module=schedule",
+            "--include-module=requests",
+            "--include-module=pptx",
+            "--include-module=json",
+            "--include-module=threading",
+            "--include-module=pathlib",
+            "--include-module=pystray",
+            "--include-module=PIL",
+            "--include-module=socket",
+            "--include-module=tempfile",
+            "--include-module=winreg",
+            "--include-module=logging",
+            "--include-module=argparse",
             "--output-dir=dist_nuitka",
+            "--output-filename=AutoHomework.exe",
             "main.py"
         ]
 
@@ -114,8 +129,7 @@ class AutoBuilder:
         """优化构建结果"""
         print("\n⚡ 优化构建结果...")
 
-        # Nuitka --onefile 输出在 dist_nuitka 目录下，文件名通常为 main.exe
-        exe_path = self.dist_dir / "main.exe"
+        exe_path = self.dist_dir / "AutoHomework.exe"
         if exe_path.exists():
             # 可以在这里添加更多的优化步骤
             print(f"✅ 可执行文件已生成: {exe_path}")

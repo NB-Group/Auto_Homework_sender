@@ -4,10 +4,9 @@
   "auto_send_enabled": true,
   "ppt_file_path": "G:/Download/测试.pptx",
   "theme": "dark",
-  "glass_blur": 20,
   "auto_start_ui": true,
   "auto_start_service": false,
   "weekday_send_time": "17:00",
   "friday_send_time": "15:00",
-  "glass_opacity": 0.15
+  
 }

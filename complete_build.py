@@ -88,14 +88,29 @@ class CompleteBuilder:
             "--include-data-dir=static=static",
             "--include-data-files=icon.ico=icon.ico",
             "--windows-icon-from-ico=icon.ico",
+            "--include-module=webview.platforms.edgechromium",
+            "--include-module=schedule",
+            "--include-module=requests",
+            "--include-module=pptx",
+            "--include-module=json",
+            "--include-module=threading",
+            "--include-module=pathlib",
+            "--include-module=pystray",
+            "--include-module=PIL",
+            "--include-module=socket",
+            "--include-module=tempfile",
+            "--include-module=winreg",
+            "--include-module=logging",
+            "--include-module=argparse",
             "--output-dir=dist_nuitka",
+            "--output-filename=AutoHomework.exe",
             "main.py"
         ]
 
         success = self.run_command(cmd, "Nuitka构建", check=False)
 
         # 检查构建结果
-        exe_path = self.dist_dir / "main.exe"
+        exe_path = self.dist_dir / "AutoHomework.exe"
         if exe_path.exists():
             file_size = exe_path.stat().st_size / (1024 * 1024)
             print("✅ 构建成功!")

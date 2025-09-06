@@ -52,8 +52,8 @@ function Test-Prerequisites {
     }
     
     # 检查应用程序文件
-    if (-not (Test-Path "dist_nuitka\main.exe")) {
-        Write-Host "[错误] 未找到应用程序文件 dist_nuitka\\main.exe" -ForegroundColor Red
+    if (-not (Test-Path "dist_nuitka\AutoHomework.exe")) {
+        Write-Host "[错误] 未找到应用程序文件 dist_nuitka\\AutoHomework.exe" -ForegroundColor Red
         Write-Host "请先运行: python complete_build.py 或 python build_auto.py" -ForegroundColor Yellow
         return $false
     }

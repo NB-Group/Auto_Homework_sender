@@ -14,6 +14,23 @@ from homework_api import HomeworkAPI, get_app_data_path
 from autostart_manager import AutostartManager
 from flask import Flask, request as flask_request, jsonify, make_response
 
+# Windows 专用：将 8.3 短路径（如 AUTOHO~1）转换为长路径
+_def_long_path_loaded = False
+
+def _to_long_path(path: str) -> str:
+    global _def_long_path_loaded
+    try:
+        if sys.platform.startswith('win'):
+            import ctypes
+            # 预估最大长度，必要时可二次分配
+            buf = ctypes.create_unicode_buffer(32767)
+            res = ctypes.windll.kernel32.GetLongPathNameW(str(path), buf, 32767)
+            if res and buf.value:
+                return buf.value
+    except Exception:
+        pass
+    return path
+
 # 单实例相关导入
 try:
     import socket
@@ -768,30 +785,42 @@ class RestServer:
                 status, info = _gh_get_json(f'https://api.github.com/repos/{owner_repo}/releases/latest')
                 assets = (info or {}).get('assets') or []
                 asset_url = ''
-                # 判断是否便携/开发：优先使用打包目录；开发模式下使用源码目录
+                # 判断运行目录（仅用于复制目标），不再区分便携/安装；下载优先 zip，若无则 exe
                 _frozen = bool(getattr(sys, 'frozen', False) or hasattr(sys, '_MEIPASS'))
                 dev_mode = not _frozen
                 app_dir = os.path.dirname(sys.executable) if _frozen else os.path.abspath(os.path.dirname(__file__))
-                # 认为“便携”= 允许写且不在 Program Files；开发模式也视为“可写的便携目录”
-                is_portable = (('program files' not in app_dir.lower()) and os.access(app_dir, os.W_OK))
-                # 便携优先选 zip 资产，否则选 exe
-                pick_ext = '.zip' if is_portable else '.exe'
+                # 优先选择 .zip
                 for a in assets:
                     name = a.get('name','')
-                    if name.endswith(pick_ext):
+                    if name.endswith('.zip'):
                         asset_url = a.get('browser_download_url')
                         break
+                # 回退到 .exe
+                if not asset_url:
+                    for a in assets:
+                        name = a.get('name','')
+                        if name.endswith('.exe'):
+                            asset_url = a.get('browser_download_url')
+                            break
                 if not asset_url:
                     status_list, rels = _gh_get_json(f'https://api.github.com/repos/{owner_repo}/releases?per_page=5')
                     if isinstance(rels, list):
                         for rel in rels:
                             if rel.get('draft') or rel.get('prerelease'):
                                 continue
+                            # 先找 zip
                             for a in (rel.get('assets') or []):
                                 name = a.get('name','')
-                                if name.endswith(pick_ext):
+                                if name.endswith('.zip'):
                                     asset_url = a.get('browser_download_url')
                                     break
+                            # 再回退 exe
+                            if not asset_url:
+                                for a in (rel.get('assets') or []):
+                                    name = a.get('name','')
+                                    if name.endswith('.exe'):
+                                        asset_url = a.get('browser_download_url')
+                                        break
                             if asset_url:
                                 break
                 if not asset_url:
@@ -835,7 +864,8 @@ class RestServer:
 
                 # 下载到临时文件（防止被“正在使用”）：保持在系统临时目录，避免写入安装目录
                 tmp_dir = _tf.gettempdir()
-                file_ext = '.zip' if is_portable else '.exe'
+                is_zip = asset_url.lower().endswith('.zip')
+                file_ext = '.zip' if is_zip else '.exe'
                 installer_path = os.path.join(tmp_dir, f'AutoHomework_Update_{int(_t.time())}{file_ext}')
                 try:
                     print('[Update][apply] save to:', installer_path)
@@ -844,7 +874,7 @@ class RestServer:
 
                 last_err = None
                 self._dl_cancel = False
-                self._dl_state = {"stage": "downloading", "percent": 0, "received": 0, "total": 0, "source": "", "portable": is_portable}
+                self._dl_state = {"stage": "downloading", "percent": 0, "received": 0, "total": 0, "source": "", "portable": bool(is_zip)}
                 for url in candidates:
                     try:
                         print('[Update][apply] try url:', url)
@@ -865,11 +895,13 @@ class RestServer:
                                         f.write(chunk)
                                         self._dl_state["received"] += len(chunk)
                                         if total:
-                                            self._dl_state["percent"] = int(self._dl_state["received"] * 100 / total)
+                                            pct = int(self._dl_state["received"] * 100 / total)
+                                            if pct > 100:
+                                                pct = 100
+                                            self._dl_state["percent"] = pct
                                         else:
                                             # 无 Content-Length 时的伪进度：基于已接收字节数估算
                                             mb_received = self._dl_state["received"] / (1024*1024)
-                                            # 更保守的估算：每MB约5%，最多90%
                                             estimated_pct = min(90, int(mb_received * 5))
                                             self._dl_state["percent"] = estimated_pct
                                         try:
@@ -882,7 +914,6 @@ class RestServer:
                         break
                     except Exception as e:
                         if str(e) == 'cancelled':
-                            # 用户取消：停止后续候选重试，返回成功但未开始安装
                             self._dl_state.update({"stage": "idle"})
                             return cors(make_response(jsonify({'success': False, 'error': '已取消'}), 200))
                         last_err = e
@@ -892,7 +923,6 @@ class RestServer:
                             pass
 
                 if last_err is not None:
-                    # 返回简短错误信息
                     return cors(make_response(jsonify({'success': False, 'error': '下载安装包失败：网络不稳定或镜像不可用，请稍后重试或手动下载。'}), 200))
 
                 # 进入安装/解压阶段
@@ -902,40 +932,61 @@ class RestServer:
                 except Exception:
                     pass
 
-                # 便携/开发：解压覆盖并重启
-                if is_portable:
+                if is_zip:
                     try:
                         import zipfile as _zf
-                        # 开发模式不覆盖源码，解压到临时目录
-                        exe_dir = app_dir if not dev_mode else os.path.join(tmp_dir, f'AutoHomework_Portable_{int(_t.time())}')
-                        try:
-                            os.makedirs(exe_dir, exist_ok=True)
-                        except Exception:
-                            pass
-                        # 生成临时updater脚本，退出后解压覆盖再重启（优先启动打包后的 exe，不存在则回退 main.exe，再不行回退 python main.py）
+                        exe_dir = app_dir
                         updater = os.path.join(tmp_dir, f'ah_updater_{int(_t.time())}.bat')
+                        ps1 = os.path.join(tmp_dir, f'ah_update_{int(_t.time())}.ps1')
+                        # 先写入 PowerShell 脚本，便于可视化与排查
+                        try:
+                            with open(ps1, 'w', encoding='utf-8') as pf:
+                                pf.write("$ErrorActionPreference='Stop'\n")
+                                pf.write("Start-Sleep -Seconds 5\n")
+                                pf.write(f"$zip=\"{installer_path.replace('\\','/')}\"\n")
+                                pf.write(f"$work=Join-Path $env:TEMP \"ah_unzip_{int(_t.time())}\"\n")
+                                pf.write("New-Item -Force -ItemType Directory -Path $work | Out-Null\n")
+                                pf.write("Write-Host \"[Update] Expand-Archive...\"\n")
+                                pf.write("Expand-Archive -Force -Path $zip -DestinationPath $work\n")
+                                pf.write("$src=$work\n")
+                                pf.write("$dirs=Get-ChildItem -LiteralPath $work -Directory | Select-Object -First 1\n")
+                                pf.write("if ($dirs) { $src=$dirs.FullName }\n")
+                                pf.write(f"$target=\"{exe_dir.replace('\\','/')}\"\n")
+                                pf.write("Write-Host \"[Update] Copying...\" $src '->' $target\n")
+                                # 全量镜像覆盖，删除多余文件，但保留卸载程序与说明文件
+                                pf.write("$log = Join-Path $env:TEMP ('ah_robo_'+(Get-Date -Format yyyyMMddHHmmss)+'.log')\n")
+                                pf.write("& robocopy \"$src\" \"$target\" /MIR /R:2 /W:1 /NFL /NDL /NJH /NJS /NP /XF unins*.exe unins*.dat README.txt | Tee-Object -FilePath $log\n")
+                                pf.write("$rc = $LASTEXITCODE\n")
+                                pf.write("Write-Host \"[Update] RoboCopy exit\" $rc \"log:\" $log\n")
+                                pf.write("if ($rc -ge 8) { throw (\"robocopy failed: \"+$rc) }\n")
+                                pf.write("Write-Host \"[Update] Locating executable...\"\n")
+                                pf.write("$exe=Get-ChildItem -Path $target -Recurse -Filter 'AutoHomework.exe' -ErrorAction SilentlyContinue | Select-Object -First 1\n")
+                                pf.write("if (-not $exe) { $exe=Get-ChildItem -Path $target -Recurse -Filter 'main.exe' -ErrorAction SilentlyContinue | Select-Object -First 1 }\n")
+                                pf.write("if ($exe) { Write-Host \"[Update] Starting\" $exe.FullName; Start-Process $exe.FullName } else { Write-Warning 'No executable found.' }\n")
+                                pf.write("Remove-Item -Force $zip -ErrorAction SilentlyContinue\n")
+                                pf.write("Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue\n")
+                        except Exception as _pe:
+                            pass
+                        # 生成 bat：用 start 打开可见的 PowerShell 窗口执行脚本
                         with open(updater, 'w', encoding='utf-8') as bf:
                             bf.write("@echo off\r\n")
-                            bf.write("ping -n 2 127.0.0.1 >nul\r\n")
-                            # 使用 PowerShell Expand-Archive 覆盖
-                            ps = f"powershell -NoProfile -Command \"Expand-Archive -Force '{installer_path.replace('\\','/')}' '{exe_dir.replace('\\','/')}'\""
-                            bf.write(ps + "\r\n")
-                            exe_path = os.path.join(exe_dir, 'AutoHomework.exe')
-                            main_exe = os.path.join(exe_dir, 'main.exe')
-                            py_main = os.path.join(exe_dir, 'main.py')
-                            bf.write(f"if exist \"{exe_path}\" ( start \"\" \"{exe_path}\" ) else if exist \"{main_exe}\" ( start \"\" \"{main_exe}\" ) else ( start \"\" \"{sys.executable}\" \"{py_main}\" )\r\n")
-                            bf.write(f"del \"{installer_path}\"\r\n")
-                            bf.write("del %~f0\r\n")
+                            bf.write("setlocal\r\n")
+                            bf.write(f"set PS1=\"{ps1}\"\r\n")
+                            bf.write("echo Launching PowerShell updater...\r\n")
+                            bf.write("start \"\" powershell -NoProfile -ExecutionPolicy Bypass -NoExit -File %PS1%\r\n")
+                            bf.write("endlocal\r\n")
+                            bf.write("exit /b 0\r\n")
                         try:
                             print(f'[Update][apply] starting updater: {updater}')
-                            _sp.Popen(['cmd', '/c', 'start', '', updater], close_fds=True, creationflags=getattr(_sp, 'CREATE_NO_WINDOW', 0))
+                            ps_exe = os.path.join(os.environ.get('SystemRoot', r'C:\\Windows'), 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+                            args = [ps_exe, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-NoExit', '-File', ps1]
+                            _sp.Popen(args, close_fds=True, creationflags=getattr(_sp, 'CREATE_NEW_CONSOLE', 0))
                         except Exception as e:
                             print(f'[Update][apply] fallback updater start: {e}')
-                            _sp.Popen([updater], close_fds=True)
+                            _sp.Popen(['cmd', '/c', f'"{updater}"'], close_fds=True)
                     except Exception as e:
                         return cors(make_response(jsonify({'success': False, 'error': f'解压更新失败，请手动下载替换。'}), 200))
                 else:
-                    # 安装器：静默覆盖安装并重启
                     try:
                         _sp.Popen([installer_path, '/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', '/CLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS'], close_fds=True)
                         try:
@@ -1458,18 +1509,38 @@ def main():
 
     # 日志输出：默认输出到控制台；仅当设置 AH_LOG_TO_FILE=1 时才重定向到文件
     try:
-        if os.environ.get('AH_LOG_TO_FILE') == '1':
-        log_dir = get_app_data_path()
-        os.makedirs(log_dir, exist_ok=True)
-        log_path = os.path.join(log_dir, 'auto_homework.log')
-        log_file = open(log_path, 'a', encoding='utf-8')
-        sys.stdout = log_file
-        sys.stderr = log_file
-        print("[Log] 日志已重定向:", log_path)
+        # 打包/编译运行时默认写日志到文件（Nuitka/PyInstaller/冻结的 .exe 均覆盖）；
+        # 开发模式保持控制台，除非显式设置。
+        want_file_log = False
+        exe_base = os.path.basename(sys.executable).lower()
+        is_compiled_exe = exe_base.endswith('.exe') and exe_base not in ('python.exe', 'pythonw.exe')
+        if getattr(sys, 'frozen', False) or hasattr(sys, '_MEIPASS') or is_compiled_exe:
+            want_file_log = os.environ.get('AH_LOG_TO_FILE', '1') != '0'
+        else:
+            want_file_log = os.environ.get('AH_LOG_TO_FILE') == '1'
+        if want_file_log:
+            log_dir = get_app_data_path()
+            os.makedirs(log_dir, exist_ok=True)
+            log_path = os.path.join(log_dir, 'auto_homework.log')
+            log_file = open(log_path, 'a', encoding='utf-8')
+            sys.stdout = log_file
+            sys.stderr = log_file
+            try:
+                # 确保行缓冲，及时落盘
+                sys.stdout.reconfigure(line_buffering=True)
+                sys.stderr.reconfigure(line_buffering=True)
+            except Exception:
+                pass
+            print("[Log] 日志已重定向:", log_path)
         else:
             print("[Log] 输出到控制台 (设置 AH_LOG_TO_FILE=1 可重定向到文件)")
         print("[Env] exe:", sys.executable)
         print("[Env] cwd:", os.getcwd())
+        try:
+            sys.stdout.flush()
+            sys.stderr.flush()
+        except Exception:
+            pass
     except Exception:
         pass
 

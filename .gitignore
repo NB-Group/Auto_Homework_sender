@@ -19,3 +19,5 @@ installer/*.exe
 Thumbs.db 
 .vscode/ 
 .idea/
+
+config.json
